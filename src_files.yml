@@ -1,0 +1,5 @@
+udma_ptp_ts:
+  files: [
+    rtl/udma_ptp_ts_reg.sv,
+    rtl/udma_ptp_ts.sv,
+  ]
