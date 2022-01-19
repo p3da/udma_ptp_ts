@@ -1,7 +1,7 @@
 /**
  * Author: David Pernerstorfer <es20m012@technikum-wien.at>
  * Date: 2022-01-03
- * Description: connects the AXIS RX an TX channel from ethernet mac to pulpissimo udma
+ * Description: connects the PTP TS (either for incoming or outgoing ehternet frames) to udma
  */
 
 module udma_ptp_ts #(
@@ -12,9 +12,8 @@ module udma_ptp_ts #(
     parameter RX_FIFO_BUFFER_DEPTH_LOG = $clog2(RX_FIFO_BUFFER_DEPTH)
 ) (
     input  logic                      sys_clk_i,
-    input  logic                      clk_eth,
-    input  logic                      clk_eth90,
-    input  logic                      rst_eth,
+    input  logic                      clk_ptp,
+    input  logic                      rst_ptp,
     input  logic   	                  rstn_i,
 
     input  logic               [31:0] cfg_data_i,
@@ -39,11 +38,9 @@ module udma_ptp_ts #(
     output logic                      data_rx_valid_o,
     input  logic                      data_rx_ready_i,
 
-    input  logic               [95:0] eth_rx_axis_tdata,
-    input  logic                      eth_rx_axis_tvalid,
-    output logic                      eth_rx_axis_tready,
-    input  logic                      eth_rx_axis_tlast,
-    input  logic                      eth_rx_axis_tuser
+    input  logic               [95:0] ptp_ts_axis_tdata,
+    input  logic                      ptp_ts_axis_tvalid,
+    output logic                      ptp_ts_axis_tready
 );
 
 /* udma peripheral uses 32bit data words */
@@ -108,11 +105,11 @@ udma_dc_fifo #(
     .DATA_WIDTH(32),
     .BUFFER_DEPTH(RX_FIFO_BUFFER_DEPTH)
 ) u_dc_fifo_rx (
-    .src_clk_i    ( clk_eth            ),
-    .src_rstn_i   ( rst_eth            ),
-    .src_data_i   ( eth_rx_axis_tdata  ),
-    .src_valid_i  ( eth_rx_axis_tvalid ),
-    .src_ready_o  ( eth_rx_axis_tready ),
+    .src_clk_i    ( clk_ptp            ),
+    .src_rstn_i   ( rst_ptp            ),
+    .src_data_i   ( ptp_ts_axis_tdata  ),
+    .src_valid_i  ( ptp_ts_axis_tvalid ),
+    .src_ready_o  ( ptp_ts_axis_tready ),
     .dst_clk_i    ( sys_clk_i          ),
     .dst_rstn_i   ( rstn_i             ),
     .dst_data_o   ( s_data_rx_out        ),
