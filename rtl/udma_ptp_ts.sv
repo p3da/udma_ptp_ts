@@ -50,12 +50,13 @@ assign data_rx_datasize_o = 2'b10;
 logic            s_data_rx_valid_out;
 logic            s_data_rx_ready_out;
 logic     [95:0] s_data_rx_out;
+logic     [127:0] s_data_rx_out128;
 
 logic            s_data_rx_valid_in;
 logic            s_data_rx_ready_in;
 logic     [31:0] s_data_rx_in;
 
-typedef enum {
+typedef enum logic [1:0] {
     IDLE = 2'b00,
     WORD2 = 2'b01,
     WORD3 = 2'b10
@@ -71,7 +72,7 @@ logic [95:0] data_rx_tmp_next;
 logic [RX_FIFO_BUFFER_DEPTH_LOG:0] cfg_rx_fifo_elements;
 
 /* register interface */
-udma_eth_frame_reg #(
+udma_ptp_ts_reg #(
     .L2_AWIDTH_NOAL(L2_AWIDTH_NOAL),
     .TRANS_SIZE(TRANS_SIZE),
     .RX_FIFO_BUFFER_DEPTH(RX_FIFO_BUFFER_DEPTH)
@@ -102,20 +103,22 @@ udma_eth_frame_reg #(
 
 /* rx dc fifo */
 udma_dc_fifo #(
-    .DATA_WIDTH(32),
+    .DATA_WIDTH(128),
     .BUFFER_DEPTH(RX_FIFO_BUFFER_DEPTH)
 ) u_dc_fifo_rx (
     .src_clk_i    ( clk_ptp            ),
     .src_rstn_i   ( rst_ptp            ),
-    .src_data_i   ( ptp_ts_axis_tdata  ),
+    .src_data_i   ( {32'h0, ptp_ts_axis_tdata}  ),
     .src_valid_i  ( ptp_ts_axis_tvalid ),
     .src_ready_o  ( ptp_ts_axis_tready ),
     .dst_clk_i    ( sys_clk_i          ),
     .dst_rstn_i   ( rstn_i             ),
-    .dst_data_o   ( s_data_rx_out        ),
+    .dst_data_o   ( s_data_rx_out128        ),
     .dst_valid_o  ( s_data_rx_valid_out    ),
     .dst_ready_i  ( s_data_rx_ready_out    )
 );
+
+assign s_data_rx_out = s_data_rx_out128[95:0];
 
 /* rx fifos; this fifo is just necessary to count the elements */
 io_generic_fifo #(
@@ -128,7 +131,7 @@ io_generic_fifo #(
 
     .elements_o (cfg_rx_fifo_elements),
 
-    .data_o  (s_data_rx_o),
+    .data_o  (data_rx_o),
     .valid_o (data_rx_valid_o),
     .ready_i (data_rx_ready_i),
 
@@ -155,7 +158,7 @@ always_ff @(posedge sys_clk_i, negedge rstn_i) begin
 end
 
 always_comb begin
-  next_state = state;
+  next_state = curr_state;
   case (curr_state)
     IDLE : begin
       if ((s_data_rx_valid_out & s_data_rx_ready_in) == 1'b1) begin
